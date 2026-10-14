@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Числовые функции</title>
+<style>
+  body { font-family: sans-serif; padding: 20px; font-size: 18px; max-width: 750px; }
+  input { font-size: 18px; padding: 4px; width: 150px; margin: 2px; }
+  h3 { margin: 14px 0 6px; color: #036; }
+  .res { margin: 4px 0; padding: 6px 10px; background: #f4f6f8; border-radius: 4px; }
+  .shared { background: #fff5e0; }
+  b { color: #036; }
+</style>
+</head>
+<body>
+<h2>Числовые функции</h2>
+<div>
+  a = <input id="a" type="number" min="1" value="360">
+  b = <input id="b" type="number" min="1" placeholder="(необязательно)">
+  k = <input id="k" type="number" value="2" min="0" title="степень для σₖ">
+</div>
+<div id="out"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const out = $('out');
+
+/* ---- утилиты ---- */
+function factorize(n){
+  n = Math.abs(n);
+  const r = [];
+  for (let d = 2; d * d <= n; d++){
+    let c = 0;
+    while (n % d === 0){ n /= d; c++; }
+    if (c) r.push([d, c]);
+  }
+  if (n > 1) r.push([n, 1]);
+  return r;
+}
+const ipow = (b, e) => { let r = 1; while (e-- > 0) r *= b; return r; };
+const gcd  = (a, b) => { a = Math.abs(a); b = Math.abs(b); while (b) [a, b] = [b, a % b]; return a; };
+const lcm  = (a, b) => Math.abs(a * b) / gcd(a, b);
+const sup  = e => e === 1 ? '' : `<sup>${e}</sup>`;
+
+function euclidSteps(a, b){
+  a = Math.abs(a); b = Math.abs(b);
+  const steps = [];
+  while (b){
+    const r = a % b;
+    steps.push(`${a} = ${Math.floor(a / b)}·${b} + ${r}`);
+    [a, b] = [b, r];
+  }
+  return steps;
+}
+
+/* ---- блок для одного числа ---- */
+function blockFor(n, k, label){
+  const f = factorize(n);
+  const factorStr = n === 1 ? '1' : f.map(([p, c]) => p + sup(c)).join(' × ');
+
+  const tau    = f.reduce((s, [, c]) => s * (c + 1), 1);
+  const sigma  = f.reduce((s, [p, c]) => s * (ipow(p, c + 1) - 1) / (p - 1), 1);
+  const sk     = f.reduce((s, [p, c]) => {
+    if (k === 0) return s * (c + 1);
+    const pk = ipow(p, k);
+    return s * (ipow(pk, c + 1) - 1) / (pk - 1);
+  }, 1);
+  const floorN = Math.floor(n);
+
+  let mu;
+  if (n === 1) mu = 1;
+  else if (f.some(([, c]) => c > 1)) mu = 0;
+  else mu = f.length % 2 ? -1 : 1;
+
+  let phi = n;
+  for (const [p] of f) phi = phi / p * (p - 1);
+
+  const line = (name, val) => `<div class="res"><b>${name}</b> = ${val}</div>`;
+
+  return `<h3>${label} = ${n}</h3>`
+       + `<div class="res"><b>Разложение</b>: ${n} = ${factorStr}</div>`
+       + line('τ — число делителей', tau)
+       + line('σ — сумма делителей', sigma)
+       + line(`σ<sub>${k}</sub> — сумма ${k}-х степеней делителей`, sk)
+       + line('⌊n⌋ — антье', floorN)
+       + line('μ — функция Мёбиуса', mu)
+       + line('φ — функция Эйлера', phi);
+}
+
+/* ---- рендер ---- */
+function render(){
+  out.innerHTML = '';
+
+  const aRaw = $('a').value.trim();
+  const bRaw = $('b').value.trim();
+  const k = Number($('k').value);
+  const kOk = Number.isInteger(k) && k >= 0;
+
+  const a = aRaw === '' ? null : Number(aRaw);
+  const b = bRaw === '' ? null : Number(bRaw);
+
+  const valid = x => x !== null && Number.isFinite(x) && Number.isInteger(x) && x >= 1;
+
+  if (valid(a)) out.insertAdjacentHTML('beforeend', blockFor(a, kOk ? k : 2, 'a'));
+  if (valid(b)) out.insertAdjacentHTML('beforeend', blockFor(b, kOk ? k : 2, 'b'));
+
+  /* общий блок — только когда оба заданы */
+  if (valid(a) && valid(b)){
+    const g = gcd(a, b);
+    const l = lcm(a, b);
+    const steps = euclidSteps(a, b);
+    out.insertAdjacentHTML('beforeend',
+      `<h3>Общее для a и b</h3>`
+      + `<div class="res shared"><b>НОД(a, b)</b> = ${g}</div>`
+      + `<div class="res shared"><b>НОК(a, b)</b> = ${l}</div>`
+      + `<div class="res shared"><b>Алгоритм Евклида</b>:<br>${steps.join('<br>')}</div>`
+    );
+  }
+
+  if (!valid(a) && !valid(b))
+    out.innerHTML = '<div class="res">Введите хотя бы одно натуральное число.</div>';
+}
+
+['a', 'b', 'k'].forEach(id => $(id).oninput = render);
+render();
+</script>
+</body>
+</html>
